@@ -68,6 +68,8 @@
     <Compile Include="IEmulatorDataProvider.cs" />
     <Compile Include="InputRecord.cs" />
     <Compile Include="inputVector.cs" />
+    <Compile Include="Network.cs" />
+    <Compile Include="NeuroReg.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

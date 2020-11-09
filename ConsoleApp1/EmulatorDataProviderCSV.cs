@@ -68,7 +68,7 @@ namespace ConsoleApp1
             }
 
         }
-        static double normalize(double val, double min, double max)
+        static double scaleToOne(double val, double min, double max)
         {
             return (val - min) / (max - min);
         }
@@ -77,13 +77,13 @@ namespace ConsoleApp1
             int Idx, sectionIdx;
             sectionIdx = rnd.Next(nOfSections - 1);
             Idx = rnd.Next(sections_[sectionIdx].start+20, sections_[sectionIdx].end - 1);//one record is required for evaluate predition
-            inputs[0] = normalize(inputData_[Idx].AirMoiscure,0,100);
-            inputs[1] = normalize(inputData_[Idx].AirTemp,-20,100);
-            inputs[2] = normalize(inputData_[Idx].RainSens,0,4095);
-            inputs[3] = normalize(inputData_[Idx].SoilSens,0,4095);
-            inputs[4] = normalize(inputData_[Idx - 1].SoilSens, 0, 4095);
-            inputs[5] = normalize(inputData_[Idx - 20].SoilSens, 0, 4095);
-            outVal = (double)normalize(inputData_[Idx + 1].SoilSens, 0, 4095);
+            inputs[0] = scaleToOne(inputData_[Idx].AirMoiscure,0,100);
+            inputs[1] = scaleToOne(inputData_[Idx].AirTemp,-20,100);
+            inputs[2] = scaleToOne(inputData_[Idx].RainSens,0,4095);
+            inputs[3] = scaleToOne(inputData_[Idx].SoilSens,0,4095);
+            inputs[4] = scaleToOne(inputData_[Idx - 1].SoilSens, 0, 4095);
+            inputs[5] = scaleToOne(inputData_[Idx - 20].SoilSens, 0, 4095);
+            outVal = (double)scaleToOne(inputData_[Idx + 1].SoilSens, 0, 4095);
         }
     }
 }

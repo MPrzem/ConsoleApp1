@@ -1,24 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
-using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ConsoleApp1
 {
-    class Emulator
+    public class NeuroReg
     {
+
         List<Layer> layers;
         double lastOutput;
         const int moiscureIdx = 3;
-        public Emulator(int inputs, int neuronsInHiddenLay1, int neuronsInHiddenLay2)
+        public NeuroReg(int neuronsInHiddenLay1, int neuronsInHiddenLay2)
         {
             layers = new List<Layer>();
-            layers.Add(new Layer(inputs, inputs));
-            layers.Add(new Layer(neuronsInHiddenLay1, inputs));
+            layers.Add(new Layer(1, 1));
+            layers.Add(new Layer(neuronsInHiddenLay1, 1));
             layers.Add(new Layer(neuronsInHiddenLay2, neuronsInHiddenLay1));
             layers.Add(new Layer(1, neuronsInHiddenLay2));
         }
@@ -50,10 +50,10 @@ namespace ConsoleApp1
             int it = maxIterations;
             while (true)
             {
-                double[] inputs=new double[6];
-                double output=0;
+                double[] inputs = new double[6];
+                double output = 0;
                 dataProvider.GetRandInputVector(ref inputs, ref output);
-                ApplyBackPropagation(inputs,output, alpha);
+                ApplyBackPropagation(inputs, output, alpha);
                 double err = AverageError(dataProvider);
                 if (err < 0.01)
                     alpha = 0.15;
@@ -97,12 +97,12 @@ namespace ConsoleApp1
                     }
                 }
             }
-            double ret_val=0;
+            double ret_val = 0;
             for (int k = 0; k < layers[0].nNeurons; k++)
             {
                 ret_val += layers[0].neurons[k].weights[0] * layers[0].neurons[k].sigma;
             }
-            
+
             return ret_val;
         }
         void ComputeNewWeights(double alpha)
@@ -110,21 +110,21 @@ namespace ConsoleApp1
             for (int i = 1; i < layers.Count; i++)
                 for (int j = 0; j < layers[i].nNeurons; j++)
                     for (int k = 0; k < layers[i].neurons[j].weights.Length; k++)
-                        layers[i].neurons[j].weights[k] -= alpha*layers[i].neurons[j].sigma * Neuron.ActFun(layers[i - 1].neurons[k].ActivationSum);
+                        layers[i].neurons[j].weights[k] -= alpha * layers[i].neurons[j].sigma * Neuron.ActFun(layers[i - 1].neurons[k].ActivationSum);
 
         }
         void ApplyBackPropagation(double[] inputs, double outActual, double alpha)
-        { 
-                Act(inputs);
-                ComputeSigmas(outActual);
-                ComputeNewWeights(alpha);
+        {
+            Act(inputs);
+            ComputeSigmas(outActual);
+            ComputeNewWeights(alpha);
         }
         public void SaveWMatrix(String neuralNetworkPath)
         {
             FileStream fs = new FileStream(neuralNetworkPath, FileMode.Create);
             BinaryFormatter formatter = new BinaryFormatter();
             formatter.Serialize(fs, this.layers);
-                fs.Close();
+            fs.Close();
         }
 
         public void ReadWMatrix(String neuralNetworkPath)
@@ -134,6 +134,9 @@ namespace ConsoleApp1
             this.layers = (List<Layer>)formatter.Deserialize(fs);
             fs.Close();
         }
+
+
+
+
     }
-    
 }
