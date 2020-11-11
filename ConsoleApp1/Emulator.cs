@@ -9,13 +9,14 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ConsoleApp1
 {
-    class Emulator
+    public class Emulator
     {
         List<Layer> layers;
         double lastOutput;
-        const int moiscureIdx = 3;
-        public Emulator(int inputs, int neuronsInHiddenLay1, int neuronsInHiddenLay2)
+        public int moiscureIdx = 3;
+        public Emulator(int inputs, int neuronsInHiddenLay1, int neuronsInHiddenLay2, int moiscureIdx_)
         {
+            moiscureIdx = moiscureIdx_;
             layers = new List<Layer>();
             layers.Add(new Layer(inputs, inputs));
             layers.Add(new Layer(neuronsInHiddenLay1, inputs));
@@ -39,7 +40,7 @@ namespace ConsoleApp1
             for (int i = 0; i < 100; i++)
             {
                 double outActual = new double();
-                double[] inputs = new double[6];
+                double[] inputs = new double[dataProvider.nOfInputs];
                 dataProvider.GetRandInputVector(ref inputs, ref outActual);
                 err += Math.Abs(Act(inputs) - outActual);
             }
@@ -50,13 +51,13 @@ namespace ConsoleApp1
             int it = maxIterations;
             while (true)
             {
-                double[] inputs=new double[6];
+                double[] inputs=new double[dataProvider.nOfInputs];
                 double output=0;
                 dataProvider.GetRandInputVector(ref inputs, ref output);
                 ApplyBackPropagation(inputs,output, alpha);
                 double err = AverageError(dataProvider);
-                if (err < 0.01)
-                    alpha = 0.15;
+//                if (err < 0.3)
+  //                  alpha = 0.25;
                 if ((it - maxIterations) % 1000 == 0)
                 {
                     Console.WriteLine(err + " iterations: " + (it - maxIterations));
@@ -76,7 +77,7 @@ namespace ConsoleApp1
 
             }
         }
-        double ComputeSigmas(double desiredOutput)
+        public double ComputeSigmas(double desiredOutput)
         {
             for (int i = layers.Count - 1; i >= 0; i--)
             {
@@ -100,7 +101,7 @@ namespace ConsoleApp1
             double ret_val=0;
             for (int k = 0; k < layers[0].nNeurons; k++)
             {
-                ret_val += layers[0].neurons[k].weights[0] * layers[0].neurons[k].sigma;
+                ret_val += layers[0].neurons[k].weights[moiscureIdx] * layers[0].neurons[k].sigma;
             }
             
             return ret_val;

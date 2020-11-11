@@ -13,12 +13,13 @@ namespace ConsoleApp1
 
         List<Layer> layers;
         double lastOutput;
-        const int moiscureIdx = 3;
-        public NeuroReg(int neuronsInHiddenLay1, int neuronsInHiddenLay2)
+        int outIdx = 6;
+        public NeuroReg(int nOfInputs,int neuronsInHiddenLay1, int neuronsInHiddenLay2, int outIdx_)
         {
+            outIdx = outIdx_;
             layers = new List<Layer>();
-            layers.Add(new Layer(1, 1));
-            layers.Add(new Layer(neuronsInHiddenLay1, 1));
+            layers.Add(new Layer(nOfInputs, nOfInputs));
+            layers.Add(new Layer(neuronsInHiddenLay1, nOfInputs));
             layers.Add(new Layer(neuronsInHiddenLay2, neuronsInHiddenLay1));
             layers.Add(new Layer(1, neuronsInHiddenLay2));
         }
@@ -33,7 +34,7 @@ namespace ConsoleApp1
             lastOutput = outputs[0];
             return outputs[0];
         }
-        double AverageError(IEmulatorDataProvider dataProvider)
+        double AverageError(IEmulatorDataProvider dataProvider)///to do zmiany
         {
             double err = 0;
             for (int i = 0; i < 100; i++)
@@ -45,15 +46,30 @@ namespace ConsoleApp1
             }
             return err;
         }
-        public bool Learn(IEmulatorDataProvider dataProvider, double alpha, double maxError, int maxIterations, String net_path = null, int iter_save = 1)
+
+        private double[][] GetLearnArray(IEmulatorDataProvider dataProvider, int K)
+        {
+            double[][] ret = new double[K][];
+            double[] tmpInput = new double[dataProvider.nOfInputs];
+            double outVal = 0;
+            ret[0] = new double[dataProvider.nOfInputs];
+            int idx=dataProvider.GetRandInputVector(ref ret[0], ref outVal, K);
+            idx++;
+            for (int i = 1; i < K; i++)
+            {
+                ret[i] = new double[dataProvider.nOfInputs];
+                dataProvider.GetInputVector(ref ret[i], ref outVal, idx + i);
+            }
+            return ret;
+        }
+        public bool Learn(IEmulatorDataProvider dataProvider, Emulator emulator, double alpha, double maxError, int maxIterations, String net_path = null, int iter_save = 1)
         {
             int it = maxIterations;
             while (true)
             {
-                double[] inputs = new double[6];
-                double output = 0;
-                dataProvider.GetRandInputVector(ref inputs, ref output);
-                ApplyBackPropagation(inputs, output, alpha);
+                
+                var inputs = GetLearnArray(dataProvider, 10);
+                ApplyBackPropagation(inputs,emulator,alpha,10,0,inputs[0][emulator.moiscureIdx]-0.04);
                 double err = AverageError(dataProvider);
                 if (err < 0.01)
                     alpha = 0.15;
@@ -76,7 +92,7 @@ namespace ConsoleApp1
 
             }
         }
-        double ComputeSigmas(double desiredOutput)
+        double ComputeSigmas(double EmulatorErr)
         {
             for (int i = layers.Count - 1; i >= 0; i--)
             {
@@ -84,7 +100,7 @@ namespace ConsoleApp1
                 {
                     if (i == layers.Count - 1)
                     {
-                        layers[i].neurons[j].CalculateSigma(lastOutput - desiredOutput);
+                        layers[i].neurons[j].CalculateSigma(EmulatorErr);
                     }
                     else
                     {
@@ -97,12 +113,11 @@ namespace ConsoleApp1
                     }
                 }
             }
-            double ret_val = 0;
+            double ret_val=0;
             for (int k = 0; k < layers[0].nNeurons; k++)
             {
-                ret_val += layers[0].neurons[k].weights[0] * layers[0].neurons[k].sigma;
+                ret_val += layers[0].neurons[k].weights[outIdx] * layers[0].neurons[k].sigma;
             }
-
             return ret_val;
         }
         void ComputeNewWeights(double alpha)
@@ -113,11 +128,29 @@ namespace ConsoleApp1
                         layers[i].neurons[j].weights[k] -= alpha * layers[i].neurons[j].sigma * Neuron.ActFun(layers[i - 1].neurons[k].ActivationSum);
 
         }
-        void ApplyBackPropagation(double[] inputs, double outActual, double alpha)
+        double ApplyBackPropagation(double[][] inputs,Emulator emulator,double alpha,int K,int Idx,double desireMoiscure)
         {
-            Act(inputs);
-            ComputeSigmas(outActual);
-            ComputeNewWeights(alpha);
+
+
+            inputs[Idx][outIdx] = Act(inputs[Idx]);///Zadziałaj regulatorem
+            inputs[++Idx][emulator.moiscureIdx]=emulator.Act(inputs[Idx]);//Westymuj stan obiektu z emulatora
+            K--;
+            // input[]emulator.Act(input);
+            //ApplyBackPropagation(estymowany stan obiektu,
+            if (K <= 0)
+            {
+                var err = ComputeSigmas(emulator.ComputeSigmas(desireMoiscure));
+                ComputeNewWeights(alpha);
+                return err;
+
+            }
+            else
+            {
+                var err = ComputeSigmas(emulator.ComputeSigmas(ApplyBackPropagation(inputs,emulator,alpha,K,Idx,desireMoiscure)));
+                ComputeNewWeights(alpha);
+                return err;
+
+            }
         }
         public void SaveWMatrix(String neuralNetworkPath)
         {

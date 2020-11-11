@@ -12,13 +12,14 @@ namespace CreateSimpleCsvFile
         System.Reflection.Assembly.GetExecutingAssembly().CodeBase)
     ).LocalPath;
             string file = path + "\\data.csv";
-            EmulatorDataProviderCSV dataProviderCSV =new EmulatorDataProviderCSV(21);
+            EmulatorDataProviderCSV dataProviderCSV =new EmulatorDataProviderCSV(21,14);
             dataProviderCSV.LoadData(file);
-            int[] net_def = new int[] { 6, 15, 9, 1 };
-            var p = new Emulator(6,10,8);
-            p.Learn(dataProviderCSV,0.35, 0.58 ,1000000, path + "\\net1.bin");
+            var p = new Emulator(dataProviderCSV.nOfInputs,20,8,dataProviderCSV.soilMoisIdx);
+            var n = new NeuroReg(4,20, 8,dataProviderCSV.outIdx);
+            n.Learn(dataProviderCSV, p, 0.3, 0.1, 10000);
+            p.Learn(dataProviderCSV,0.2, 0.1 ,1000000, path + "\\net1.bin");
             p.ReadWMatrix(path + "\\net1.bin");
-            p.Learn(dataProviderCSV, 0.35, 0.58, 1000000, path + "\\net1.bin");
+            p.Learn(dataProviderCSV, 0.35, 0.1, 1000000, path + "\\net1.bin");
             Console.ReadLine();
         }
     }

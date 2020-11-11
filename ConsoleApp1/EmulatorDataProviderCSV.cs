@@ -12,14 +12,24 @@ namespace ConsoleApp1
 {
     public class EmulatorDataProviderCSV : IEmulatorDataProvider
     {
+        private int stepsback;
         Random rnd = new Random();
         List<InputRecord> inputData_;
         List<section> sections_=new List<section>();
+        public int nOfInputs { get; set; }
         public int nOfSections { get { return sections_.Count; } private set { } }
+
+        public int outIdx { get; set; }
+        public int soilMoisIdx { get; set; }
+
         private int minimum_section_long;
-        public EmulatorDataProviderCSV(int minimum_section_long_)
+        public EmulatorDataProviderCSV(int minimum_section_long_,int stepsback_)
         {
+            this.stepsback = stepsback_;
             minimum_section_long = minimum_section_long_;
+            soilMoisIdx = 3;
+            outIdx = 4 + stepsback;
+            nOfInputs = 2 * stepsback + 5;
         }
         public struct section
         {
@@ -77,12 +87,25 @@ namespace ConsoleApp1
             int Idx, sectionIdx;
             sectionIdx = rnd.Next(nOfSections - 1);
             Idx = rnd.Next(sections_[sectionIdx].start+20, sections_[sectionIdx].end - 1);//one record is required for evaluate predition
-            inputs[0] = scaleToOne(inputData_[Idx].AirMoiscure,0,100);
-            inputs[1] = scaleToOne(inputData_[Idx].AirTemp,-20,100);
-            inputs[2] = scaleToOne(inputData_[Idx].RainSens,0,4095);
-            inputs[3] = scaleToOne(inputData_[Idx].SoilSens,0,4095);
-            inputs[4] = scaleToOne(inputData_[Idx - 1].SoilSens, 0, 4095);
-            inputs[5] = scaleToOne(inputData_[Idx - 20].SoilSens, 0, 4095);
+            GetInputVector(ref inputs, ref outVal, Idx);
+        }
+        public int GetRandInputVector(ref double[] inputs, ref double outVal,int nToEnd)
+        {
+            int Idx, sectionIdx;
+            sectionIdx = rnd.Next(nOfSections - 1);
+            Idx = rnd.Next(sections_[sectionIdx].start, sections_[sectionIdx].end - nToEnd);//one record is required for evaluate predition
+            GetInputVector(ref inputs, ref outVal, Idx);
+            return Idx;
+        }
+        public void GetInputVector(ref double[] inputs, ref double outVal, int Idx)
+        {
+            inputs[0] = scaleToOne(inputData_[Idx].AirMoiscure, 0, 100);
+            inputs[1] = scaleToOne(inputData_[Idx].AirTemp, -20, 100);
+            inputs[2] = scaleToOne(inputData_[Idx].RainSens, 0, 4095);
+            for(int i=0;i<=stepsback;i++)
+                inputs[i+3] = scaleToOne(inputData_[Idx - i].SoilSens, 0, 4095);
+            for (int i = 0; i <= stepsback; i++)
+                inputs[i+4+stepsback] = scaleToOne(inputData_[Idx-i].OutVal, 0, 100);
             outVal = (double)scaleToOne(inputData_[Idx + 1].SoilSens, 0, 4095);
         }
     }
