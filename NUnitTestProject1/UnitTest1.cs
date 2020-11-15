@@ -19,7 +19,7 @@ System.IO.Path.GetDirectoryName(
 System.Reflection.Assembly.GetExecutingAssembly().CodeBase)
 ).LocalPath;
             string file = path + "\\data_test.csv";
-            EmulatorDataProviderCSV dataProviderCSV = new EmulatorDataProviderCSV(2);
+            EmulatorDataProviderCSV dataProviderCSV = new EmulatorDataProviderCSV(2,6);
             dataProviderCSV.LoadData(file);
             Assert.AreEqual(2, dataProviderCSV.nOfSections);
         }

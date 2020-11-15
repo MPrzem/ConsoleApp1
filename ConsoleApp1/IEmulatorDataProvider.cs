@@ -11,8 +11,10 @@ namespace ConsoleApp1
         int nOfInputs { get; set; }
         int outIdx { get; set; }
         int soilMoisIdx { get; set; }
+        int stepsback { get; set; }
         int GetRandInputVector(ref double[] inputs, ref double outVal, int nToEnd);
         void GetRandInputVector(ref double[] inputs,ref double outVal);
+        bool GetInputVectorOneByOne(ref double[] inputs, ref double outVal);
         void GetInputVector(ref double[] inputs, ref double outVal, int Idx);
     }
 }

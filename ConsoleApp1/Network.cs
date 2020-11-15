@@ -13,13 +13,13 @@ namespace ConsoleApp1
         public int nNeurons;
         public double[] output;
 
-        public Layer(int n, int numberOfInputs)
+        public Layer(int n, int numberOfInputs, Func<double, double> activate, Func<double, double> actderiv)
         {
             nNeurons = n;
             neurons = new List<Neuron>();
             for (int i = 0; i < nNeurons; i++)
             {
-                neurons.Add(new Neuron(numberOfInputs));
+                neurons.Add(new Neuron(numberOfInputs,activate,actderiv));
             }
         }
 
@@ -40,41 +40,58 @@ namespace ConsoleApp1
     class Neuron
     {
         public double[] weights;
-        public double ActivationSum;
+        public double[] deltas;
+        public double LastOut;
+        public double LastIn;
         public double sigma = 0;
-        public Neuron(int numberOfInputs)
+        public double bias;
+        public Func<double, double> activate_;
+        public Func<double, double> actderiv_;
+
+        public Neuron(int numberOfInputs,Func<double,double> activate,Func<double,double> actderiv)
         {
+            activate_ = activate;
+            actderiv_ = actderiv;
             Random rand = new Random();
+            bias = 2 * rand.NextDouble() -1 ;
             weights = new double[numberOfInputs];
+            deltas = new double[numberOfInputs];
             for (int i = 0; i < numberOfInputs; i++)
             {
-                weights[i] = 10 * rand.NextDouble() - 5;// bias;
+                weights[i] = 2 * rand.NextDouble() - 1;// bias;
             }
         }
-        public void CalculateSigma(double error)
+        public void SaveSigma(double error)
         {
-            sigma = (error) * Neuron.ActFunDeriv(ActivationSum);
+            sigma = error;
         }
         public double Act(double[] inputs)
         {
-            double activation = 0; // bias;
+            double activation = bias;
 
             for (int i = 0; i < weights.Length; i++)
             {
                 activation += weights[i] * inputs[i];
             }
-            ActivationSum = activation;
-            activation = ActFun(activation);
+            activation = activate_(activation);
+            LastOut = activation;
             return activation;
         }
         public static double ActFun(double input)
         {
-            return 1 / (1 + Math.Exp(-input));
+            return 1 / (1 + Math.Exp(-0.5*input));
         }
-        public static double ActFunDeriv(double input)
+        public static double ActFunDeriv(double y)
         {
-            double y = ActFun(input);
-            return y * (1 - y);
+            return 0.5*y * (1 - y);
+        }
+        public static double ActLinearFun(double input)
+        {
+            return 1 / (1 + Math.Exp(-0.5*input));
+        }
+        public static double ActDerivLinearFun(double y)
+        {
+            return 0.5*y * (1 - y);
         }
 
     }

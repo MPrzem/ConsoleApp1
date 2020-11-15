@@ -12,10 +12,12 @@ namespace ConsoleApp1
 {
     public class EmulatorDataProviderCSV : IEmulatorDataProvider
     {
-        private int stepsback;
+        public int stepsback { get; set; }
         Random rnd = new Random();
         List<InputRecord> inputData_;
         List<section> sections_=new List<section>();
+        private int currentSection = 0;
+        private int currentIdx = 0;
         public int nOfInputs { get; set; }
         public int nOfSections { get { return sections_.Count; } private set { } }
 
@@ -27,9 +29,9 @@ namespace ConsoleApp1
         {
             this.stepsback = stepsback_;
             minimum_section_long = minimum_section_long_;
-            soilMoisIdx = 3;
-            outIdx = 4 + stepsback;
-            nOfInputs = 2 * stepsback + 5;
+            soilMoisIdx = 0;// 3;
+            outIdx = stepsback +1;//4 + stepsback;
+            nOfInputs = 2 * stepsback+2; //+ 5;
         }
         public struct section
         {
@@ -51,11 +53,11 @@ namespace ConsoleApp1
                 long time_distance = inputData_[i + 1].ts - inputData_[i].ts;
                 if (time_distance > 20000)
                 {
-                    if(i-start>= minimum_section_long-1)
+                    Console.WriteLine("nb of sections{0}", sections_.Count);
+                    if (i-start>= minimum_section_long-1)
                         sections_.Add(new section(start, i));
                     start = i+1;
                 }
-                Console.WriteLine("nb of sections{0}", sections_.Count);
                     i++;
             }
             sections_.Add(new section(start, i));
@@ -72,10 +74,6 @@ namespace ConsoleApp1
 
             }
             find_sections();
-            foreach (var inputvec in inputData_)
-            {
-                Console.WriteLine($"{inputvec.ts}");
-            }
 
         }
         static double scaleToOne(double val, double min, double max)
@@ -93,20 +91,45 @@ namespace ConsoleApp1
         {
             int Idx, sectionIdx;
             sectionIdx = rnd.Next(nOfSections - 1);
-            Idx = rnd.Next(sections_[sectionIdx].start, sections_[sectionIdx].end - nToEnd);//one record is required for evaluate predition
+            Idx = rnd.Next(sections_[sectionIdx].start+stepsback, sections_[sectionIdx].end - nToEnd);//one record is required for evaluate predition
             GetInputVector(ref inputs, ref outVal, Idx);
             return Idx;
         }
         public void GetInputVector(ref double[] inputs, ref double outVal, int Idx)
         {
-            inputs[0] = scaleToOne(inputData_[Idx].AirMoiscure, 0, 100);
-            inputs[1] = scaleToOne(inputData_[Idx].AirTemp, -20, 100);
-            inputs[2] = scaleToOne(inputData_[Idx].RainSens, 0, 4095);
+         //   inputs[0] = scaleToOne(inputData_[Idx].AirMoiscure, 0, 100);
+         //   inputs[1] = scaleToOne(inputData_[Idx].AirTemp, -20, 100);
+         //   inputs[2] = scaleToOne(inputData_[Idx].RainSens, 0, 4095);
+
             for(int i=0;i<=stepsback;i++)
-                inputs[i+3] = scaleToOne(inputData_[Idx - i].SoilSens, 0, 4095);
+                inputs[i] = scaleToOne(inputData_[Idx - i].SoilSens, 500, 3500);
             for (int i = 0; i <= stepsback; i++)
-                inputs[i+4+stepsback] = scaleToOne(inputData_[Idx-i].OutVal, 0, 100);
-            outVal = (double)scaleToOne(inputData_[Idx + 1].SoilSens, 0, 4095);
+                inputs[i+stepsback+1] = scaleToOne(inputData_[Idx+1-i].OutVal, 0, 100);//
+            outVal = (double)scaleToOne(inputData_[Idx + 1].SoilSens, 500, 3500);
+        }
+        public bool GetInputVectorOneByOne(ref double[] inputs, ref double outVal)
+        {
+            while (currentIdx < stepsback+ sections_[currentSection].start)
+                currentIdx++;
+            if (currentIdx >= sections_[currentSection].end - 1)
+            {
+                currentSection++;
+                currentIdx+=2;
+            }
+            if (currentSection < sections_.Count)
+            {
+                GetInputVector(ref inputs, ref outVal, currentIdx);
+                currentIdx++;
+                return true;
+            }
+            else
+            {
+
+                currentIdx = 0;
+                currentSection = 0;
+                return false;
+            }
+
         }
     }
 }

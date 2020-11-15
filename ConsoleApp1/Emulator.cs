@@ -13,20 +13,20 @@ namespace ConsoleApp1
     {
         List<Layer> layers;
         double lastOutput;
-        public int moiscureIdx = 3;
-        public Emulator(int inputs, int neuronsInHiddenLay1, int neuronsInHiddenLay2, int moiscureIdx_)
+        public int outIdx;
+        public Emulator(int inputs, int neuronsInHiddenLay1, int neuronsInHiddenLay2, int outIdx_)
         {
-            moiscureIdx = moiscureIdx_;
+            outIdx = outIdx_;
             layers = new List<Layer>();
-            layers.Add(new Layer(inputs, inputs));
-            layers.Add(new Layer(neuronsInHiddenLay1, inputs));
-            layers.Add(new Layer(neuronsInHiddenLay2, neuronsInHiddenLay1));
-            layers.Add(new Layer(1, neuronsInHiddenLay2));
+            layers.Add(new Layer(inputs, inputs,Neuron.ActFun,Neuron.ActFunDeriv));
+            layers.Add(new Layer(neuronsInHiddenLay1, inputs, Neuron.ActFun, Neuron.ActFunDeriv));
+            layers.Add(new Layer(neuronsInHiddenLay2, neuronsInHiddenLay1, Neuron.ActFun, Neuron.ActFunDeriv));
+            layers.Add(new Layer(1, neuronsInHiddenLay2, Neuron.ActLinearFun, Neuron.ActDerivLinearFun));
         }
         public double Act(double[] inputs)
         {
             double[] outputs = new double[0];
-            for (int i = 1; i < layers.Count; i++)
+            for (int i = 0; i < layers.Count; i++)
             {
                 outputs = layers[i].Act(inputs);
                 inputs = outputs;
@@ -36,12 +36,11 @@ namespace ConsoleApp1
         }
         double AverageError(IEmulatorDataProvider dataProvider)
         {
+            double outActual = new double();
+            double[] inputs = new double[dataProvider.nOfInputs];
             double err = 0;
-            for (int i = 0; i < 100; i++)
+            while (dataProvider.GetInputVectorOneByOne(ref inputs, ref outActual))
             {
-                double outActual = new double();
-                double[] inputs = new double[dataProvider.nOfInputs];
-                dataProvider.GetRandInputVector(ref inputs, ref outActual);
                 err += Math.Abs(Act(inputs) - outActual);
             }
             return err;
@@ -53,11 +52,14 @@ namespace ConsoleApp1
             {
                 double[] inputs=new double[dataProvider.nOfInputs];
                 double output=0;
-                dataProvider.GetRandInputVector(ref inputs, ref output);
-                ApplyBackPropagation(inputs,output, alpha);
-                double err = AverageError(dataProvider);
-//                if (err < 0.3)
-  //                  alpha = 0.25;
+                //  dataProvider.GetRandInputVector(ref inputs, ref output);
+                while (dataProvider.GetInputVectorOneByOne(ref inputs, ref output)) {
+                   ClearDeltas();
+                    ApplyBackPropagation(inputs, output, alpha);
+                    ApplyDeltas();
+                }
+                 double err = AverageError(dataProvider);
+                Console.WriteLine("Err: "+err + " iterations: " + (it - maxIterations));
                 if ((it - maxIterations) % 1000 == 0)
                 {
                     Console.WriteLine(err + " iterations: " + (it - maxIterations));
@@ -77,7 +79,7 @@ namespace ConsoleApp1
 
             }
         }
-        public double ComputeSigmas(double desiredOutput)
+        public double[] ComputeSigmas(double ErrOfLastLayer,int K)
         {
             for (int i = layers.Count - 1; i >= 0; i--)
             {
@@ -85,7 +87,7 @@ namespace ConsoleApp1
                 {
                     if (i == layers.Count - 1)
                     {
-                        layers[i].neurons[j].CalculateSigma(lastOutput - desiredOutput);
+                        layers[i].neurons[j].SaveSigma(ErrOfLastLayer);
                     }
                     else
                     {
@@ -94,31 +96,86 @@ namespace ConsoleApp1
                         {
                             sum += layers[i + 1].neurons[k].weights[j] * layers[i + 1].neurons[k].sigma;
                         }
-                        layers[i].neurons[j].CalculateSigma(sum);
+                        layers[i].neurons[j].SaveSigma(sum);
                     }
                 }
             }
-            double ret_val=0;
-            for (int k = 0; k < layers[0].nNeurons; k++)
+            double[] bfsigmas=new double[K];
+            for (int i = 0; i < bfsigmas.Length; i++)
             {
-                ret_val += layers[0].neurons[k].weights[moiscureIdx] * layers[0].neurons[k].sigma;
+                for (int k = 0; k < layers[0].nNeurons; k++)
+                {
+                    bfsigmas[i] += layers[0].neurons[k].weights[outIdx+i] * layers[0].neurons[k].sigma;
+                }
             }
-            
-            return ret_val;
+            return bfsigmas;
         }
-        void ComputeNewWeights(double alpha)
+        public void ComputeSigmas(double ErrOfLastLayer)
         {
-            for (int i = 1; i < layers.Count; i++)
+            for (int i = layers.Count - 1; i >= 0; i--)
+            {
+                for (int j = 0; j < layers[i].nNeurons; j++)
+                {
+                    if (i == layers.Count - 1)
+                    {
+                        layers[i].neurons[j].SaveSigma(ErrOfLastLayer);
+                    }
+                    else
+                    {
+                        double sum = 0;
+                        for (int k = 0; k < layers[i + 1].nNeurons; k++)
+                        {
+                            sum += layers[i + 1].neurons[k].weights[j] * layers[i + 1].neurons[k].sigma;
+                        }
+                        layers[i].neurons[j].SaveSigma(sum);
+                    }
+                }
+            }
+        }
+        void ComputeNewWeights(double alpha,double[] inputs)
+        {
+            for (int i = 0; i < layers.Count; i++)
                 for (int j = 0; j < layers[i].nNeurons; j++)
                     for (int k = 0; k < layers[i].neurons[j].weights.Length; k++)
-                        layers[i].neurons[j].weights[k] -= alpha*layers[i].neurons[j].sigma * Neuron.ActFun(layers[i - 1].neurons[k].ActivationSum);
+                    {
+                        if(i==0)
+                            layers[i].neurons[j].deltas[k] += alpha * layers[i].neurons[j].sigma* layers[i].neurons[j].actderiv_(layers[i].neurons[j].LastOut) * inputs[k];
+                        else 
+                            layers[i].neurons[j].deltas[k] += alpha * layers[i].neurons[j].sigma * layers[i].neurons[j].actderiv_(layers[i].neurons[j].LastOut)* layers[i - 1].neurons[k].LastOut;
+                    }
 
+        }
+        void ApplyDeltas()
+        {
+            for (int i = 0; i < layers.Count; i++)
+                for (int j = 0; j < layers[i].nNeurons; j++)
+                    for (int k = 0; k < layers[i].neurons[j].weights.Length; k++)
+                        layers[i].neurons[j].weights[k] -= layers[i].neurons[j].deltas[k];
+        }
+        void ClearDeltas()
+        {
+            for (int i = 0; i < layers.Count; i++)
+                for (int j = 0; j < layers[i].nNeurons; j++)
+                    for (int k = 0; k < layers[i].neurons[j].weights.Length; k++)
+                        layers[i].neurons[j].deltas[k] = 0;
+        }
+        void UpdateBias(double alpha, double[] inputs)
+        {
+            for (int i = 0; i < layers.Count; i++)
+            {
+                for (int j = 0; j < layers[i].nNeurons; j++)
+                {
+                    if (i == 0)
+                        layers[i].neurons[j].bias -= alpha * layers[i].neurons[j].sigma * layers[i].neurons[j].actderiv_(layers[i].neurons[j].LastOut);
+                }
+            }
         }
         void ApplyBackPropagation(double[] inputs, double outActual, double alpha)
         { 
                 Act(inputs);
-                ComputeSigmas(outActual);
-                ComputeNewWeights(alpha);
+                ComputeSigmas(lastOutput-outActual);
+                UpdateBias(alpha,inputs);
+                ComputeNewWeights(alpha,inputs);
         }
         public void SaveWMatrix(String neuralNetworkPath)
         {
