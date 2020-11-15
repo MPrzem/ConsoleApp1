@@ -41,18 +41,6 @@ namespace ConsoleApp1
             lastOutput = outputs[0];
             return outputs[0];
         }
-        double AverageError(IEmulatorDataProvider dataProvider)///to do zmiany
-        {
-            double err = 0;
-            for (int i = 0; i < 100; i++)
-            {
-                double outActual = new double();
-                double[] inputs = new double[6];
-                dataProvider.GetRandInputVector(ref inputs, ref outActual);
-                err += Math.Abs(Act(inputs) - outActual);
-            }
-            return err;
-        }
 
         private double[][] GetLearnArray(IEmulatorDataProvider dataProvider, int K)
         {
@@ -75,30 +63,15 @@ namespace ConsoleApp1
             double err=0;
             while (true)
             {
-                double desiremois = 0.55;
-
+                double desiremois = 0.58;
                 double[][] inputs;
-                
                 do
                 {
-                    inputs  = GetLearnArray(dataProvider, 14);
+                    inputs  = GetLearnArray(dataProvider, 14);//wybranie tablicy kolejnych K próbek
                 } while (inputs[0][0] < desiremois + 0.05);
-
-                err +=ApplyBackPropagation(inputs, emulator, 0.05, desiremois, 13);
-                //double err = AverageError(dataProvider);
-                //if (err < 0.01)
-                ///   alpha = 0.15;
-                if ((it - maxIterations) % 1000 == 0)
-                {
-                    Console.WriteLine(err + " iterations: " + (it - maxIterations));
-                    err = 0;
-                }
-              /*  if (err < maxError)
-                {
-                    SaveWMatrix(net_path);
-                    Console.WriteLine("Save net to " + net_path);
-                    return true;
-                }*/
+                err +=ApplyBackPropagation(inputs, emulator, 0.5, desiremois, 12);
+                Console.WriteLine(err + " iterations: " + (it - maxIterations));
+                err = 0;
                 maxIterations--;
                 if (maxIterations <= 0)
                 {
@@ -132,11 +105,11 @@ namespace ConsoleApp1
             double ret_val=0;
             for (int k = 0; k < layers[0].nNeurons; k++)
             {
-                ret_val += layers[0].neurons[k].weights[moiscureIdx] * layers[0].neurons[k].sigma;
+                ret_val += layers[0].neurons[k].weights[0] * layers[0].neurons[k].sigma;///Wartość błędu pochodząca z poprzedniego wyjscia emulatora
             }
             return ret_val;
         }
-        void ComputeNewWeights(double alpha, double[] inputs)
+        void ComputeNewWeights(double alpha, double[] inputs)///wiekoszc tego mozna wykonac w neuronach
         {
             for (int i = 0; i < layers.Count; i++)
                 for (int j = 0; j < layers[i].nNeurons; j++)
@@ -163,14 +136,17 @@ namespace ConsoleApp1
                     for (int k = 0; k < layers[i].neurons[j].weights.Length; k++)
                         layers[i].neurons[j].deltas[k] = 0;
         }
-        /*        void ComputeNewWeights(double alpha)
+        void UpdateBias(double alpha, double[] inputs)
+        {
+            for (int i = 0; i < layers.Count; i++)
+            {
+                for (int j = 0; j < layers[i].nNeurons; j++)
                 {
-                    for (int i = 1; i < layers.Count; i++)
-                        for (int j = 0; j < layers[i].nNeurons; j++)
-                            for (int k = 0; k < layers[i].neurons[j].weights.Length; k++)
-                                layers[i].neurons[j].weights[k] -= alpha * layers[i].neurons[j].sigma * layers[i - 1].neurons[k].LastOut;
-
-                }*/
+                    if (i == 0)
+                        layers[i].neurons[j].bias -= alpha * layers[i].neurons[j].sigma * layers[i].neurons[j].actderiv_(layers[i].neurons[j].LastOut);
+                }
+            }
+        }
         double ApplyBackPropagation(double[][] inputs,Emulator emulator,double alpha,double desireMoiscure,int K)
         {
             double[][] regInputs = new double[K][];
@@ -180,29 +156,29 @@ namespace ConsoleApp1
                 {
                     inputs[i][outIdx + j] = inputs[i-1 ][outIdx + j - 1];
                     inputs[i][moiscureIdx + j] = inputs[i-1][moiscureIdx + j - 1];
-                }
+                }//Przepisanie danych z poprzedniej próbki do nowej próbki(siec uwzględnia dane z poprzednich stanów)
                 regInputs[i] = new double[nOfInputs];
-                regInputs[i][0] = inputs[i][outIdx+1];
-                for (int j = 1; j < nOfInputs; j++)
+                for (int j = 0; j < nOfInputs; j++)
                 {
-                    regInputs[i][j] = inputs[i][moiscureIdx - 1 + j];
+                    regInputs[i][j] = inputs[i][moiscureIdx + j];///Wybranie danych wejsciowych dla regulatora W tym momencie tylko wilgotnosc ale w przyszłosci dojdą inne dane
                 }
                 inputs[i][outIdx] = Act(regInputs[i]);///Zadziałaj regulatorem
-                inputs[i + 1][moiscureIdx] = emulator.Act(inputs[i]);//Westymuj stan obiektu z emulatora
+                inputs[i + 1][moiscureIdx] = emulator.Act(inputs[i]);//Westymuj stan obiektu z
             }
-            
+            ///Przejscie w tył
                 double err = inputs[K][moiscureIdx] - desireMoiscure;
-                double[] errorsActs=emulator.ComputeSigmas(err,K);
-            for (int i = 0; i < K-1; i++)
-            {
-                Act(regInputs[K - 1 - i]);
-                ComputeSigmas(errorsActs[i]);
-                ClearDeltas();
-                ComputeNewWeights(alpha, regInputs[K-1-i]);
-                ApplyDeltas();
+            double enderr = err;
 
+            for (int i = 0; i < K; i++)
+            {
+                ClearDeltas();
+                double errorsActs = emulator.ComputeSigmas(1, K);
+                ComputeSigmas(err);
+                Act(regInputs[K-i-1]);//Do uzyskania LastOutput kazdego neuronu odpowiedniego dla danego K kroku(bardzo nie optymalne, wiem xD)
+                ComputeNewWeights(alpha, regInputs[K-i-1]);
+                ApplyDeltas();
             }
-            return err;
+            return enderr;
         }
         public void SaveWMatrix(String neuralNetworkPath)
         {

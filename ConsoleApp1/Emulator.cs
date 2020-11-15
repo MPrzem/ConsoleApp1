@@ -79,7 +79,7 @@ namespace ConsoleApp1
 
             }
         }
-        public double[] ComputeSigmas(double ErrOfLastLayer,int K)
+        public double ComputeSigmas(double ErrOfLastLayer,int K)
         {
             for (int i = layers.Count - 1; i >= 0; i--)
             {
@@ -100,15 +100,13 @@ namespace ConsoleApp1
                     }
                 }
             }
-            double[] bfsigmas=new double[K];
-            for (int i = 0; i < bfsigmas.Length; i++)
-            {
+            double errorForControler=0;
                 for (int k = 0; k < layers[0].nNeurons; k++)
                 {
-                    bfsigmas[i] += layers[0].neurons[k].weights[outIdx+i] * layers[0].neurons[k].sigma;
+                    errorForControler= layers[0].neurons[k].weights[outIdx] * layers[0].neurons[k].sigma;
                 }
-            }
-            return bfsigmas;
+            
+            return errorForControler;
         }
         public void ComputeSigmas(double ErrOfLastLayer)
         {

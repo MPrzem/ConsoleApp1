@@ -42,7 +42,6 @@ namespace ConsoleApp1
         public double[] weights;
         public double[] deltas;
         public double LastOut;
-        public double LastIn;
         public double sigma = 0;
         public double bias;
         public Func<double, double> activate_;
@@ -58,7 +57,7 @@ namespace ConsoleApp1
             deltas = new double[numberOfInputs];
             for (int i = 0; i < numberOfInputs; i++)
             {
-                weights[i] = 2 * rand.NextDouble() - 1;// bias;
+                weights[i] = 1 * rand.NextDouble() - 1;// bias;
             }
         }
         public void SaveSigma(double error)
