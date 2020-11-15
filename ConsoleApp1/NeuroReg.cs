@@ -172,10 +172,11 @@ namespace ConsoleApp1
             for (int i = 0; i < K; i++)
             {
                 ClearDeltas();
-                double errorsActs = emulator.ComputeSigmas(1, K);
-                ComputeSigmas(err);
+                double errorsActs = emulator.ComputeSigmas(err, K);
+               err= ComputeSigmas(errorsActs);
                 Act(regInputs[K-i-1]);//Do uzyskania LastOutput kazdego neuronu odpowiedniego dla danego K kroku(bardzo nie optymalne, wiem xD)
                 ComputeNewWeights(alpha, regInputs[K-i-1]);
+                UpdateBias(alpha, regInputs[K - i - 1]);
                 ApplyDeltas();
             }
             return enderr;
